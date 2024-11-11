@@ -1,0 +1,28 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="12.0" DefaultTargets="Default" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <Guid>4878fab5-7ace-4cb4-82b3-06a05cec2a98</Guid>
+    <Name>Troop Movement</Name>
+    <Description>Changes Advent troop movement</Description>
+    <SteamPublishID>0</SteamPublishID>
+    <AssemblyName>TroopMovement</AssemblyName>
+    <RootNamespace>TroopMovement</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Folder Include="Config\" />
+    <Folder Include="Localization\" />
+    <Folder Include="Src\" />
+    <Folder Include="Src\TroopMovement\" />
+    <Folder Include="Src\TroopMovement\Classes\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="ReadMe.txt" />
+    <Content Include="ModPreview.jpg" />
+    <Content Include="Config\XComEditor.ini" />
+    <Content Include="Config\XComEngine.ini" />
+    <Content Include="Config\XComGame.ini" />
+    <Content Include="Localization\XComGame.int" />
+    <Content Include="Src\TroopMovement\Classes\X2DownloadableContentInfo_TroopMovement.uc" />
+  </ItemGroup>
+  <Import Project="$(MSBuildLocalExtensionPath)\XCOM2.targets" />
+</Project>
