@@ -2,15 +2,17 @@ class X2DownloadableContentInfo_TroopMovement extends X2DownloadableContentInfo;
 
 static event OnLoadedSavedGame()
 {
-    // Called when loading a saved game
+    `LOG("TroopMovement: Saved Game Loaded",, 'TroopMovement');
+    class'XCom2WorldMap'.static.InitializeWorldMap();
 }
 
 static event OnPostTemplatesCreated()
 {
-    // Called after templates are created
+    `LOG("TroopMovement: Templates Created",, 'TroopMovement');
+    class'XCom2WorldMap'.static.InitializeWorldMap();
 }
 
 static event InstallNewCampaign(XComGameState StartState)
 {
-    // Called when starting a new campaign
+    `LOG("TroopMovement: New Campaign Started",, 'TroopMovement');
 }
