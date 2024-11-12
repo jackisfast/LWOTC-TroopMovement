@@ -1,16 +1,8 @@
 class LWReinforceActivity_Override extends X2LWAlienActivityTemplate config(LWActivities);
 
+var XCom2WorldMap WorldMap;
 var config int REINFORCE_DIFFERENCE_REQ_FOR_FORCELEVEL_TRANSFER;
 var config float DEFAULT_VIGILANCE_THRESHOLD;
-
-static function array<X2DataTemplate> CreateTemplates()
-{
-    local array<X2DataTemplate> Templates;
-
-    Templates.AddItem(CreateReinforceTemplate());
-
-    return Templates;
-}
 
 static function X2DataTemplate CreateReinforceTemplate()
 {
@@ -42,53 +34,92 @@ static function X2DataTemplate CreateReinforceTemplate()
 
 static function array<XComGameState_WorldRegion> GetPathToHighVigilance(
     XComGameState_WorldRegion StartRegion,
-    XComGameState NewGameState,
-    optional float VigilanceThreshold = 5.0)
+    XComGameState NewGameState)
 {
     local array<XComGameState_WorldRegion> Path, OpenList, ClosedList;
     local XComGameState_WorldRegion CurrentRegion, Neighbor;
     local map<XComGameState_WorldRegion, XComGameState_WorldRegion> ParentMap;
     local XComGameState_WorldRegion_LWStrategyAI RegionalAI;
+    local array<name> ValidNeighbors;
+    local float BestVigilanceScore;
+    local name CurrentRegionName;
+    local int CurrentHops;
+    local map<XComGameState_WorldRegion, int> HopMap;
     
     if(StartRegion == none || NewGameState == none)
     {
-        `LOG("GetPathToHighVigilance: Invalid parameters",, 'LWReinforceActivity_Override');
+        `LOG("GetPathToHighVigilance: Invalid parameters",, 'TroopMovement');
         return Path;
     }
 
+    // Initialize the world map
+    class'XCom2WorldMap'.static.InitializeWorldMap();
+
     OpenList.AddItem(StartRegion);
     ParentMap.Set(StartRegion, none);
+    HopMap.Set(StartRegion, 0);
+    BestVigilanceScore = -1;
+
+    `LOG("Starting pathfinding from:" @ StartRegion.GetMyTemplateName(),, 'TroopMovement');
 
     while(OpenList.Length > 0)
     {
         CurrentRegion = OpenList[0];
         OpenList.Remove(0);
+        HopMap.Get(CurrentRegion, CurrentHops);
 
         RegionalAI = class'XComGameState_WorldRegion_LWStrategyAI'.static.GetRegionalAI(CurrentRegion, NewGameState);
-        if(RegionalAI != none && RegionalAI.LocalVigilanceLevel >= VigilanceThreshold)
+        if(RegionalAI != none)
         {
-            while(CurrentRegion != none)
+            `LOG("Checking region:" @ CurrentRegion.GetMyTemplateName() @ 
+                "Vigilance:" @ RegionalAI.LocalVigilanceLevel @ 
+                "Hops:" @ CurrentHops,, 'TroopMovement');
+
+            // Update best path if this region has higher vigilance
+            if(RegionalAI.LocalVigilanceLevel > BestVigilanceScore)
             {
-                Path.InsertItem(0, CurrentRegion);
-                CurrentRegion = ParentMap.Find(CurrentRegion);
+                BestVigilanceScore = RegionalAI.LocalVigilanceLevel;
+                // Reconstruct path
+                Path.Length = 0;
+                Neighbor = CurrentRegion;
+                while(Neighbor != none)
+                {
+                    Path.InsertItem(0, Neighbor);
+                    Neighbor = ParentMap.Find(Neighbor);
+                }
+                `LOG("New best path found with vigilance:" @ BestVigilanceScore,, 'TroopMovement');
             }
-            `LOG("GetPathToHighVigilance: Found path of length" @ Path.Length,, 'LWReinforceActivity_Override');
-            return Path;
+        }
+
+        // Stop exploring after 3 hops
+        if(CurrentHops >= 3)
+        {
+            continue;
         }
 
         ClosedList.AddItem(CurrentRegion);
+        CurrentRegionName = CurrentRegion.GetMyTemplateName();
+        ValidNeighbors = class'XCom2WorldMap'.static.GetValidConnections(CurrentRegionName);
 
-        foreach(CurrentRegion.GetLinkedRegions() as Neighbor)
+        foreach CurrentRegion.GetLinkedRegions() as Neighbor
         {
-            if(ClosedList.Contains(Neighbor) || OpenList.Contains(Neighbor))
+            // Skip if this isn't a valid connection or already processed
+            if(ValidNeighbors.Find(Neighbor.GetMyTemplateName()) == INDEX_NONE ||
+               ClosedList.Contains(Neighbor) || 
+               OpenList.Contains(Neighbor))
+            {
                 continue;
+            }
 
             OpenList.AddItem(Neighbor);
             ParentMap.Set(Neighbor, CurrentRegion);
+            HopMap.Set(Neighbor, CurrentHops + 1);
+
+            `LOG("Added neighbor:" @ Neighbor.GetMyTemplateName() @ 
+                "at hop:" @ (CurrentHops + 1),, 'TroopMovement');
         }
     }
-    
-    `LOG("GetPathToHighVigilance: No path found",, 'LWReinforceActivity_Override');
+
     return Path;
 }
 
@@ -109,14 +140,18 @@ static function UpdateRegionalStrength(
         if(CurrentAI.LocalForceLevel > 2 && 
            NextAI.LocalVigilanceLevel - NextAI.LocalForceLevel > default.REINFORCE_DIFFERENCE_REQ_FOR_FORCELEVEL_TRANSFER)
         {
-            `LOG("UpdateRegionalStrength: Moving force from" @ CurrentRegion.GetMyTemplateName() @ "to" @ Path[i + 1].GetMyTemplateName(),, 'LWReinforceActivity_Override');
+            `LOG("Moving force from" @ CurrentRegion.GetMyTemplateName() @ 
+                "to" @ Path[i + 1].GetMyTemplateName(),, 'TroopMovement');
             CurrentAI.LocalForceLevel -= 1;
             NextAI.LocalForceLevel += 1;
         }
     }
 }
 
-static function int GetReinforceAlertLevel(XComGameState_LWAlienActivity ActivityState, XComGameState_MissionSite MissionSite, XComGameState NewGameState)
+static function int GetReinforceAlertLevel(
+    XComGameState_LWAlienActivity ActivityState, 
+    XComGameState_MissionSite MissionSite, 
+    XComGameState NewGameState)
 {
     local XComGameState_WorldRegion OriginRegionState, DestinationRegionState;
     local XComGameState_WorldRegion_LWStrategyAI OriginAIState, DestinationAIState;
@@ -135,7 +170,20 @@ static function int GetReinforceAlertLevel(XComGameState_LWAlienActivity Activit
     return Max(OriginAIState.LocalAlertLevel, DestinationAIState.LocalAlertLevel) + ActivityState.GetMyTemplate().AlertLevelModifier;
 }
 
-static function OnReinforceActivityComplete(bool bAlienSuccess, XComGameState_LWAlienActivity ActivityState, XComGameState NewGameState)
+static function array<name> GetReinforceRewards(
+    XComGameState_LWAlienActivity ActivityState, 
+    name MissionFamily, 
+    XComGameState NewGameState)
+{
+    local array<name> Rewards;
+    Rewards[0] = 'Reward_Dummy_Materiel';
+    return Rewards;
+}
+
+static function OnReinforceActivityComplete(
+    bool bAlienSuccess, 
+    XComGameState_LWAlienActivity ActivityState, 
+    XComGameState NewGameState)
 {
     local XComGameState_WorldRegion DestRegionState, OrigRegionState;
     local XComGameState_WorldRegion_LWStrategyAI DestRegionalAI, OrigRegionalAI;
@@ -154,21 +202,24 @@ static function OnReinforceActivityComplete(bool bAlienSuccess, XComGameState_LW
 
     if(bAlienSuccess)
     {
-        `LOG("ReinforceRegion: Alien Success, processing reinforcements",, 'LWReinforceActivity_Override');
+        `LOG("ReinforceRegion: Alien Success, processing reinforcements",, 'TroopMovement');
 
+        // Handle alert level changes
         if (OrigRegionalAI.LocalAlertLevel > 1)
         {
             DestRegionalAI.LocalAlertLevel += 1;
             OrigRegionalAI.LocalAlertLevel -= 1;
         }
 
-        Path = GetPathToHighVigilance(DestRegionState, NewGameState, default.DEFAULT_VIGILANCE_THRESHOLD);
+        // Find and process path to high vigilance
+        Path = GetPathToHighVigilance(DestRegionState, NewGameState);
         if(Path.Length > 0)
         {
             UpdateRegionalStrength(Path, NewGameState);
         }
         else
         {
+            // Fallback to original behavior if no path found
             if(DestRegionalAI.LocalVigilanceLevel - DestRegionalAI.LocalAlertLevel > default.REINFORCE_DIFFERENCE_REQ_FOR_FORCELEVEL_TRANSFER)
             {
                 if(OrigRegionalAI.LocalForceLevel > 2)
@@ -181,20 +232,13 @@ static function OnReinforceActivityComplete(bool bAlienSuccess, XComGameState_LW
     }
     else
     {
-        `LOG("ReinforceRegion: XCOM Success",, 'LWReinforceActivity_Override');
+        `LOG("ReinforceRegion: XCOM Success",, 'TroopMovement');
         OrigRegionalAI.LocalAlertLevel = Max(OrigRegionalAI.LocalAlertLevel - 1, 1);
         OrigRegionalAI.AddVigilance(NewGameState, default.REINFORCEMENTS_STOPPED_ORIGIN_VIGILANCE_INCREASE);
         AddVigilanceNearby(NewGameState, DestRegionState, 
             default.REINFORCEMENTS_STOPPED_ADJACENT_VIGILANCE_BASE,
             default.REINFORCEMENTS_STOPPED_ADJACENT_VIGILANCE_RAND);
     }
-}
-
-static function array<name> GetReinforceRewards(XComGameState_LWAlienActivity ActivityState, name MissionFamily, XComGameState NewGameState)
-{
-    local array<name> Rewards;
-    Rewards[0] = 'Reward_Dummy_Materiel';
-    return Rewards;
 }
 
 defaultproperties
