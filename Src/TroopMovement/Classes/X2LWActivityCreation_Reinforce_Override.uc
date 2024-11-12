@@ -1,6 +1,5 @@
 class X2LWActivityCreation_Reinforce_Override extends X2LWActivityCreation_Reinforce;
 
-// Modified to use world map for region validation
 function XComGameState_WorldRegion FindBestReinforceDestRegion(XComGameState NewGameState)
 {
     local XComGameStateHistory History;
@@ -63,7 +62,7 @@ function float CalculateRegionScore(
     if(Path.Length > 0)
     {
         Score += 2.0;
-        // Slight penalty for longer paths
+        // Penalty for longer paths
         Score -= (Path.Length * 0.2);
     }
 
