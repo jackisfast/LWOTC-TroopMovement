@@ -1,7 +1,3 @@
-/// <summary>
-/// XCom2WorldMap defines and manages the valid connections between world regions.
-/// This is used by the reinforcement pathfinding system to ensure realistic troop movements.
-/// </summary>
 class XCom2WorldMap extends Object config(LWActivities);
 
 struct RegionDefinition
@@ -10,17 +6,19 @@ struct RegionDefinition
     var array<name> Connections;
 };
 
-var const array<RegionDefinition> ValidConnections;
-var private static bool bIsInitialized;
+var config array<RegionDefinition> ValidConnections;
+var config bool bIsInitialized;  // Changed to config var
 
 static function bool IsInitialized()
 {
-    return bIsInitialized;
+    return default.bIsInitialized;
 }
 
 static function InitializeWorldMap()
 {
-    if (bIsInitialized)
+    local XCom2WorldMap Instance;
+
+    if (default.bIsInitialized)
     {
         `LOG("World Map already initialized",, 'TroopMovement');
         return;
@@ -28,46 +26,152 @@ static function InitializeWorldMap()
 
     `LOG("Initializing World Map Structure",, 'TroopMovement');
     
-    default.ValidConnections.Length = 0;  // Clear existing
-    InitializeRegions();
-    VerifyConnections();
+    Instance = new class'XCom2WorldMap';
+    Instance.InitializeRegions();
+    Instance.VerifyConnections();
     
-    bIsInitialized = true;
+    // Save initialization state to config
+    SetInitialized(true);
 }
 
-private static function InitializeRegions()
+static function SetInitialized(bool bInitialized)
 {
-    AddRegion('WorldRegion_EastAfrica', ["WorldRegion_EasternEurope", "WorldRegion_NewIndia", "WorldRegion_SouthAfrica", "WorldRegion_WestAfrica"]);
-    AddRegion('WorldRegion_SouthAfrica', ["WorldRegion_EastAfrica", "WorldRegion_NewChile", "WorldRegion_WestAfrica"]);
-    AddRegion('WorldRegion_WestAfrica', ["WorldRegion_EastAfrica", "WorldRegion_NewBrazil", "WorldRegion_SouthAfrica", "WorldRegion_WesternEurope"]);
-    AddRegion('WorldRegion_EastAsia', ["WorldRegion_NewIndia", "WorldRegion_NewIndonesia"]);
-    AddRegion('WorldRegion_NewArctic', ["WorldRegion_WestAsia", "WorldRegion_WesternUS"]);
-    AddRegion('WorldRegion_NewIndia', ["WorldRegion_EastAfrica", "WorldRegion_EastAsia", "WorldRegion_WestAsia"]);
-    AddRegion('WorldRegion_WestAsia', ["WorldRegion_EasternEurope", "WorldRegion_NewArctic", "WorldRegion_NewIndia"]);
-    AddRegion('WorldRegion_EasternEurope', ["WorldRegion_EastAfrica", "WorldRegion_WestAsia", "WorldRegion_WesternEurope"]);
-    AddRegion('WorldRegion_WesternEurope', ["WorldRegion_EasternEurope", "WorldRegion_EasternUS", "WorldRegion_WestAfrica"]);
-    AddRegion('WorldRegion_EasternUS', ["WorldRegion_NewMexico", "WorldRegion_WesternEurope"]);
-    AddRegion('WorldRegion_NewMexico', ["WorldRegion_EasternUS", "WorldRegion_NewBrazil", "WorldRegion_WesternUS"]);
-    AddRegion('WorldRegion_WesternUS', ["WorldRegion_NewArctic", "WorldRegion_NewMexico"]);
-    AddRegion('WorldRegion_NewAustralia', ["WorldRegion_NewChile", "WorldRegion_NewIndonesia"]);
-    AddRegion('WorldRegion_NewIndonesia', ["WorldRegion_EastAsia", "WorldRegion_NewAustralia"]);
-    AddRegion('WorldRegion_NewBrazil', ["WorldRegion_NewChile", "WorldRegion_NewMexico", "WorldRegion_WestAfrica"]);
-    AddRegion('WorldRegion_NewChile', ["WorldRegion_NewAustralia", "WorldRegion_NewBrazil", "WorldRegion_SouthAfrica"]);
+    default.bIsInitialized = bInitialized;
+    StaticSaveConfig();
 }
 
-private static function AddRegion(name RegionName, array<name> Connections)
+function InitializeRegions()
 {
-    local RegionDefinition Region;
+    local array<name> Connections;
+
+    // Clear existing connections
+    default.ValidConnections.Length = 0;
+
+    // East Africa
+    Connections.Length = 0;
+    Connections.AddItem('WorldRegion_EasternEurope');
+    Connections.AddItem('WorldRegion_NewIndia');
+    Connections.AddItem('WorldRegion_SouthAfrica');
+    Connections.AddItem('WorldRegion_WestAfrica');
+    AddRegionToMap('WorldRegion_EastAfrica', Connections);
+
+    // South Africa
+    Connections.Length = 0;
+    Connections.AddItem('WorldRegion_EastAfrica');
+    Connections.AddItem('WorldRegion_NewChile');
+    Connections.AddItem('WorldRegion_WestAfrica');
+    AddRegionToMap('WorldRegion_SouthAfrica', Connections);
+
+    // West Africa
+    Connections.Length = 0;
+    Connections.AddItem('WorldRegion_EastAfrica');
+    Connections.AddItem('WorldRegion_NewBrazil');
+    Connections.AddItem('WorldRegion_SouthAfrica');
+    Connections.AddItem('WorldRegion_WesternEurope');
+    AddRegionToMap('WorldRegion_WestAfrica', Connections);
+
+    // East Asia
+    Connections.Length = 0;
+    Connections.AddItem('WorldRegion_NewIndia');
+    Connections.AddItem('WorldRegion_NewIndonesia');
+    AddRegionToMap('WorldRegion_EastAsia', Connections);
+
+    // Arctic
+    Connections.Length = 0;
+    Connections.AddItem('WorldRegion_WestAsia');
+    Connections.AddItem('WorldRegion_WesternUS');
+    AddRegionToMap('WorldRegion_NewArctic', Connections);
+
+    // India
+    Connections.Length = 0;
+    Connections.AddItem('WorldRegion_EastAfrica');
+    Connections.AddItem('WorldRegion_EastAsia');
+    Connections.AddItem('WorldRegion_WestAsia');
+    AddRegionToMap('WorldRegion_NewIndia', Connections);
+
+    // West Asia
+    Connections.Length = 0;
+    Connections.AddItem('WorldRegion_EasternEurope');
+    Connections.AddItem('WorldRegion_NewArctic');
+    Connections.AddItem('WorldRegion_NewIndia');
+    AddRegionToMap('WorldRegion_WestAsia', Connections);
+
+    // Eastern Europe
+    Connections.Length = 0;
+    Connections.AddItem('WorldRegion_EastAfrica');
+    Connections.AddItem('WorldRegion_WestAsia');
+    Connections.AddItem('WorldRegion_WesternEurope');
+    AddRegionToMap('WorldRegion_EasternEurope', Connections);
+
+    // Western Europe
+    Connections.Length = 0;
+    Connections.AddItem('WorldRegion_EasternEurope');
+    Connections.AddItem('WorldRegion_EasternUS');
+    Connections.AddItem('WorldRegion_WestAfrica');
+    AddRegionToMap('WorldRegion_WesternEurope', Connections);
+
+    // Eastern US
+    Connections.Length = 0;
+    Connections.AddItem('WorldRegion_NewMexico');
+    Connections.AddItem('WorldRegion_WesternEurope');
+    AddRegionToMap('WorldRegion_EasternUS', Connections);
+
+    // Mexico
+    Connections.Length = 0;
+    Connections.AddItem('WorldRegion_EasternUS');
+    Connections.AddItem('WorldRegion_NewBrazil');
+    Connections.AddItem('WorldRegion_WesternUS');
+    AddRegionToMap('WorldRegion_NewMexico', Connections);
+
+    // Western US
+    Connections.Length = 0;
+    Connections.AddItem('WorldRegion_NewArctic');
+    Connections.AddItem('WorldRegion_NewMexico');
+    AddRegionToMap('WorldRegion_WesternUS', Connections);
+
+    // Australia
+    Connections.Length = 0;
+    Connections.AddItem('WorldRegion_NewChile');
+    Connections.AddItem('WorldRegion_NewIndonesia');
+    AddRegionToMap('WorldRegion_NewAustralia', Connections);
+
+    // Indonesia
+    Connections.Length = 0;
+    Connections.AddItem('WorldRegion_EastAsia');
+    Connections.AddItem('WorldRegion_NewAustralia');
+    AddRegionToMap('WorldRegion_NewIndonesia', Connections);
+
+    // Brazil
+    Connections.Length = 0;
+    Connections.AddItem('WorldRegion_NewChile');
+    Connections.AddItem('WorldRegion_NewMexico');
+    Connections.AddItem('WorldRegion_WestAfrica');
+    AddRegionToMap('WorldRegion_NewBrazil', Connections);
+
+    // Chile
+    Connections.Length = 0;
+    Connections.AddItem('WorldRegion_NewAustralia');
+    Connections.AddItem('WorldRegion_NewBrazil');
+    Connections.AddItem('WorldRegion_SouthAfrica');
+    AddRegionToMap('WorldRegion_NewChile', Connections);
+
+    // Save the connections to config
+    StaticSaveConfig();
+}
+
+function AddRegionToMap(name RegionName, array<name> Connections)
+{
+    local RegionDefinition NewRegion;
     
-    Region.RegionName = RegionName;
-    Region.Connections = Connections;
-    default.ValidConnections.AddItem(Region);
+    NewRegion.RegionName = RegionName;
+    NewRegion.Connections = Connections;
+    default.ValidConnections.AddItem(NewRegion);
 }
 
-static function VerifyConnections()
+function VerifyConnections()
 {
     local int i, j;
-    local RegionDefinition Region1, Region2;
+    local RegionDefinition Region1;
     local bool bHasErrors;
 
     `LOG("Verifying region connections...",, 'TroopMovement');
@@ -80,6 +184,7 @@ static function VerifyConnections()
             if(!VerifyBidirectionalConnection(Region1.RegionName, Region1.Connections[j]))
             {
                 bHasErrors = true;
+                `LOG("Error: Missing reciprocal connection between" @ Region1.RegionName @ "and" @ Region1.Connections[j],, 'TroopMovement');
             }
         }
     }
@@ -90,15 +195,15 @@ static function VerifyConnections()
     }
 }
 
-private static function bool VerifyBidirectionalConnection(name Region1Name, name Region2Name)
+static function bool VerifyBidirectionalConnection(name Region1Name, name Region2Name)
 {
-    local RegionDefinition Region2;
+    local RegionDefinition Region;
     
-    foreach default.ValidConnections(Region2)
+    foreach default.ValidConnections(Region)
     {
-        if(Region2.RegionName == Region2Name)
+        if(Region.RegionName == Region2Name)
         {
-            if(Region2.Connections.Find(Region1Name) != INDEX_NONE)
+            if(Region.Connections.Find(Region1Name) != INDEX_NONE)
             {
                 return true;
             }
@@ -106,30 +211,32 @@ private static function bool VerifyBidirectionalConnection(name Region1Name, nam
         }
     }
     
-    `LOG("ERROR: Missing reciprocal connection between" @ Region1Name @ "and" @ Region2Name,, 'TroopMovement');
     return false;
 }
 
 static function array<name> GetValidConnections(name RegionName)
 {
-    local int i;
+    local RegionDefinition Region;
+    local array<name> Result;
+
+    Result.Length = 0; // Initialize the array
     
     if(RegionName == '')
     {
         `LOG("ERROR: GetValidConnections called with empty region name",, 'TroopMovement');
-        return new class'array<name>';
+        return Result;
     }
     
-    for(i = 0; i < default.ValidConnections.Length; i++)
+    foreach default.ValidConnections(Region)
     {
-        if(default.ValidConnections[i].RegionName == RegionName)
+        if(Region.RegionName == RegionName)
         {
-            return default.ValidConnections[i].Connections;
+            return Region.Connections;
         }
     }
     
     `LOG("WARNING: No connections found for region:" @ RegionName,, 'TroopMovement');
-    return new class'array<name>';
+    return Result;
 }
 
 static function bool AreRegionsConnected(name Region1Name, name Region2Name)
@@ -145,6 +252,8 @@ static function array<name> GetAllRegions()
     local array<name> Regions;
     local RegionDefinition Region;
     
+    Regions.Length = 0; // Initialize the array
+    
     foreach default.ValidConnections(Region)
     {
         Regions.AddItem(Region.RegionName);
@@ -159,4 +268,8 @@ static function int GetConnectionCount(name RegionName)
     
     Connections = GetValidConnections(RegionName);
     return Connections.Length;
+}
+
+defaultproperties
+{
 }

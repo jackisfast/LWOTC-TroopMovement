@@ -6,70 +6,20 @@ class X2DownloadableContentInfo_TroopMovement extends X2DownloadableContentInfo 
 var config int VERSION;
 var config array<name> ActivityTemplates;
 
-// Cache for tracking initialization
-var private bool bInitialized;
-
-static event OnPostTemplatesCreated()
-{
-    local X2StrategyElementTemplateManager StratMgr;
-    
-    `LOG("TroopMovement: Beginning template initialization",, 'TroopMovement');
-    
-    // Get the strategy template manager
-    StratMgr = class'X2StrategyElementTemplateManager'.static.GetStrategyElementTemplateManager();
-    
-    // Validate and update templates
-    UpdateTemplates(StratMgr);
-    
-    // Initialize world map
-    InitializeWorldMapSystem();
-    
-    `LOG("TroopMovement: Template initialization complete",, 'TroopMovement');
-}
-
 static event OnLoadedSavedGame()
 {
-    local XComGameState NewGameState;
-    local XComGameState_CampaignSettings Settings;
-    
-    `LOG("TroopMovement: Processing saved game load",, 'TroopMovement');
-    
-    // Check version and perform upgrades if needed
-    Settings = XComGameState_CampaignSettings(
-        `XCOMHISTORY.GetSingleGameStateObjectForClass(class'XComGameState_CampaignSettings')
-    );
-    
-    if (Settings != none && (!Settings.HasVersionNumberEntry('TroopMovement') || 
-        Settings.GetVersionNumber('TroopMovement') < default.VERSION))
+    if(!class'X2DownloadableContentInfo_TroopMovement_CampaignHandler'.static.HasVersionNumberEntry(none, 'TroopMovement'))
     {
-        NewGameState = class'XComGameStateContext_ChangeContainer'.static.CreateChangeState("TroopMovement Version Update");
-        UpgradeMod(NewGameState, Settings);
-        SubmitGameState(NewGameState);
+        class'X2DownloadableContentInfo_TroopMovement_CampaignHandler'.static.SetVersionNumber('TroopMovement', default.VERSION);
     }
-    
-    // Initialize world map
-    InitializeWorldMapSystem();
 }
 
 static event InstallNewCampaign(XComGameState StartState)
 {
-    local XComGameState_CampaignSettings Settings;
-    
     `LOG("TroopMovement: Installing new campaign",, 'TroopMovement');
     
-    // Set initial version
-    Settings = XComGameState_CampaignSettings(
-        StartState.CreateStateObject(class'XComGameState_CampaignSettings', 
-        `XCOMHISTORY.GetSingleGameStateObjectForClass(class'XComGameState_CampaignSettings').ObjectID)
-    );
+    class'X2DownloadableContentInfo_TroopMovement_CampaignHandler'.static.SetVersionNumber('TroopMovement', default.VERSION);
     
-    if (Settings != none)
-    {
-        Settings.SetVersionNumber('TroopMovement', default.VERSION);
-        StartState.AddStateObject(Settings);
-    }
-    
-    // Initialize world map
     InitializeWorldMapSystem();
 }
 
@@ -122,12 +72,6 @@ private static function UpgradeMod(XComGameState NewGameState, XComGameState_Cam
     PreviousVersion = Settings.GetVersionNumber('TroopMovement');
     `LOG("Upgrading TroopMovement from version" @ PreviousVersion @ "to" @ default.VERSION,, 'TroopMovement');
     
-    // Add version-specific upgrade logic here if needed
-    // Example:
-    // if (PreviousVersion < 2)
-    // {
-    //     UpgradeToVersion2(NewGameState);
-    // }
     
     Settings.SetVersionNumber('TroopMovement', default.VERSION);
 }

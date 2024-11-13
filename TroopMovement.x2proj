@@ -25,10 +25,22 @@
     <Content Include="Config\XComEngine.ini" />
     <Content Include="Config\XComGame.ini" />
     <Content Include="Localization\XComGame.int" />
+    <Content Include="Src\TroopMovement\Classes\Helpers_LW_Override.uc">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Src\TroopMovement\Classes\LWReinforceActivity_Override.uc">
       <SubType>Content</SubType>
     </Content>
     <Content Include="Src\TroopMovement\Classes\X2DownloadableContentInfo_TroopMovement.uc" />
+    <Content Include="Src\TroopMovement\Classes\X2DownloadableContentInfo_TroopMovement_CampaignHandler.uc">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Src\TroopMovement\Classes\X2LWActivityCondition_AnyAlienRegion.uc">
+      <SubType>Content</SubType>
+    </Content>
+    <Content Include="Src\TroopMovement\Classes\X2LWActivityCondition_SingleInRegion.uc">
+      <SubType>Content</SubType>
+    </Content>
     <Content Include="Src\TroopMovement\Classes\X2LWActivityCreation_Reinforce_Override.uc">
       <SubType>Content</SubType>
     </Content>
